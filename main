@@ -1,0 +1,66 @@
+import os
+import pandas as pd
+from scripts.mock_motorcad import MockMotorCAD
+from scripts.generate_report import create_pdf_report
+import matplotlib.pyplot as plt
+
+# Function to handle multiple simulations
+def run_simulation(stator_diameters):
+    # Create folders if not exist
+    for folder in ["data", "results", "plots"]:
+        os.makedirs(folder, exist_ok=True)
+
+    # Initialize Mock Motor-CAD
+    mcad = MockMotorCAD()
+
+    # Storage for all results
+    all_results = []
+
+    for stator_diameter in stator_diameters:
+        mcad.SetVariable("StatorDiameter", stator_diameter)
+        mcad.SolveDesign()
+
+        result = {
+            "StatorDiameter": stator_diameter,
+            "Torque": mcad.GetVariable("Torque"),
+            "Efficiency": mcad.GetVariable("Efficiency"),
+            "Losses": mcad.GetVariable("Losses"),
+        }
+        all_results.append(result)
+
+        # Save to CSV for each input
+        df = pd.DataFrame(all_results)
+        csv_path = f"data/simulation_results_{stator_diameter}.csv"
+        df.to_csv(csv_path, index=False)
+        print(f"✅ CSV Saved: {csv_path}")
+
+        # Plot and Save Graphs
+        plt.figure()
+        plt.plot(df["StatorDiameter"], df["Torque"], marker='o')
+        plt.title(f"Torque vs Stator Diameter (Dia: {stator_diameter}mm)")
+        plt.xlabel("Stator Diameter (mm)")
+        plt.ylabel("Torque (Nm)")
+        torque_plot = f"plots/torque_vs_diameter_{stator_diameter}.png"
+        plt.savefig(torque_plot)
+        plt.close()
+
+        plt.figure()
+        plt.plot(df["StatorDiameter"], df["Efficiency"], marker='s', color='green')
+        plt.title(f"Efficiency vs Stator Diameter (Dia: {stator_diameter}mm)")
+        plt.xlabel("Stator Diameter (mm)")
+        plt.ylabel("Efficiency (%)")
+        eff_plot = f"plots/efficiency_vs_diameter_{stator_diameter}.png"
+        plt.savefig(eff_plot)
+        plt.close()
+
+        print(f"✅ Plots Saved for Dia: {stator_diameter}mm")
+
+        # Generate PDF Report with CSV data and both plots
+        create_pdf_report(csv_path, torque_plot, eff_plot)
+        print(f"✅ PDF Report Generated for Dia: {stator_diameter}mm")
+
+# List of Stator Diameters (or other parameters) you want to simulate
+stator_diameters = [90, 95, 100, 105, 110]  # Example: Multiple diameters
+
+# Run the simulation with these input values
+run_simulation(stator_diameters)
